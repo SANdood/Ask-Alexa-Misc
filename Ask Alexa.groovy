@@ -2334,65 +2334,81 @@ def weatherAlerts(){
                         msg += "${warn} " 
                     }
                 } else {
-                    alerts.each {
-                        def desc = "A ${it.description} is in effect from ${it.date} until ${it.expires}. "
+                    alerts.each { alert ->
+                    	def desc
+                    	if (alert.description.startsWith("A")) {		// Areal Flood Watch
+                        	desc = "An "
+                    	} else {
+                    		desc = "A " 
+                    	}
+                    	desc += "${alert.description} is in effect from ${alert.date} until ${alert.expires}. "
                         msg += desc.replaceAll(/ 0(\d,) /, / $1 /)			// Fix "July 02, 2016" --> "July 2, 2016"
+
                         if ( !brief ) {
-                          	warn = it.message.replaceAll("\\.\\.\\.", ", ").replaceAll("\\* ", " ") 				// convert "..." and "* " to a single space (" ")
-                            warn = warn.replaceAll( "\\s+", " ")													// remove extra whitespace
+                          	warn = alert.message.replaceAll("\\.\\.\\.", ", ").replaceAll("\\* ", " ") 				// convert "..." and "* " to a single space (" ")
+                            warn = warn.replaceAll( "\\s+", " ")												// remove extra whitespace
 
 							// See if we need to split up the message (multiple messages are separated by a date stamp
-                            def warnings[]
+                            def warnings = []
                             def i = 0
                             while ( warn != "" ) {
-                            	def ddate = = warn.replaceFirst(/.+ (\d{3,4} (am|AM|pm|PM) .{3} .{3} .{3} .? .{4}).*/, /$1/)
+                            	def ddate = warn.replaceFirst(/(?i).+ (\d{3,4} (am|pm) .{3} .{3} .{3} .? .{4}).*/, /$1/)
                             	if ( ddate ) {
-                            		def d = warn.indexOf( ddate )
-                                	warnings[i] = warn.take( d-1 )
-                                	warn = warn.drop( d + ddate.size )
-                                    i = i + 1
+                            		def d = warn.indexOf(ddate)
+                                	warnings[i] = warn.take(d-1)
+                                	warn = warn.drop(d+ddate.size())
+                                    i=i+1
                                 } else {
-                                	warning[i] = warn
+                                	warnings[i] = warn
                                     warn = ""
                                 }
                             }
                             
-                            warnings.each {
-                            	it = it.replaceAll(/ (\d{1,2})(\d{2}) (am|pm|AM|PM) /, / $1:$2 $3 / ) 	 			// and fix time for Alexa to read 
-                            	def m = warn.indexOf("Lat, Lon")														// remove list of Lat... Lon coordinates
-                            	if (m > 0) warn = warn.take(m-1)
-                            
-                            def head = null
-                            if ( it.description.contains( "Statement")) {
-                            	def b = warn.indexOf(', ')+2
-                            	def e = warn.indexOf(',', b+1)
-                            	head = warn.substring(b, e)					// extract the advisory headline
-                                warn = warn.drop( e+2 )							// drop the headline
-                            	m = warn.indexOf( head )						// look for a second occurance
-                            	if (m > 0) {									// get rid of repeated text
-                            		warn = warn.take(m-1)						
-									warn=warn.replaceFirst(/(.+\.).*\d{3,4} (am|pm|AM|PM) [a-zA-Z]{3,}.*/, /$1/) // strip off trailing author (if any) + date
-								}
-                            } else if ( it.description.contains("Flood Warning")) {
-                            	m = warn.indexOf( "Fld observed forecast" )
-                                if ( m <= 0 ) m = warn.indexOf("lat, Lon")
-                                if ( m > 0 ) {
-                                	def ddate = warn.replaceFirst(/.+ (\d{3,4} (am|AM|pm|PM) .{3} .{3} .{3} .? .{4}).*/, /$1/)
-                                    if ( ddate ) {
-                                    	def d = warn.indexOf( ddate, m-1) + ddate.size()
-                                    	def foo = ""
-                                    	if ( d > 0 ) foo = warn.drop(d)
-                                    	warn = warn.take(m-1) + foo
-                                    } else {
-                                    	warn = warn.drop(m)
+                            def headline = ""
+                            warnings.each { warning ->
+                            	def b = warning.indexOf(', ')+2
+                            	def e = warning.indexOf(',', b)
+                                if (e>b) {
+                                	def head = warning.substring(b, e)				// extract the advisory headline
+                                	warning = warning.drop( e+2 )					// drop the headline  
+                                
+                               		if (i!=0) {			// if more than one message, check for repeats.
+                               			if (headline == "") {
+                                			headline = head							// first occurance
+                                			warn = head + ". "
+                                		} else if (head != headline) {				// different headline
+                                			warn = head + ". "
+                                		} else { 
+                                        	warn = ""
+                                        }									// headlines are the same, drop this warning[]
+									} else {
+                            			warn = head + ". "							// only 1 warning in this Advisory
+                            		}
+                                } else {	// no headline in this message
+                                	warn = ""	// Drop whatever junk is in it
+                                }
+
+                                if (warn != "") {							// good warning - let's clean it up
+                                	def m
+                                	warning = warning.replaceAll(/ ((?i)\d{1,2})(\d{2}) (am|pm) /, / $1:$2 $3 / )	// fix time for Alexa to read 
+                           			def latlon = warning.replaceFirst(/(?i)(Lat, Lon)/, /$1/)
+									if (latlon) {
+                                    	m = warning.indexOf( latlon )
+										if (m>0) warning = warning.take(m-1)
                                     }
-                                } else {  // just cut out the date string
-                                	warn = warn.replaceAll(/(.+) \d{3,4} (am|AM|pm|PM) .{3} .{3} .{3} .? .{4})(.*)/, /$1 $3/)
+                                    def table = warning.replaceFirst(/(?i)(Fld observed forecast)/, /$1/)
+                           			if (table) {
+                                    	m = warning.indexOf( table )
+                                        if (m>0) warning = warning.take(m-1)
+                                    }
+                                    warning = warning.replaceFirst("(.+\\.)(.*)", /$1/)		// strip off Alert author, if present
+                           			warning = warning.replaceAll(/\/[sS]/, /\'s/).trim()		// fix escaped plurals, and trim excess whitespace
+                          			if (!warning.endsWith(".")) warning += "."				// close off this warning with a period                            			
+                           			msg += warn + warning
+                           			warn = ""
+
                                 }
                             }
-                            warn = warn.replaceAll(/\/[sS]/, /\'s/).trim()		// fix escaped plurals, and trim excess whitespace
-                            if (!warn.endsWith(".")) warn += "."													// close of the Advisory with a period
-                            if (head) msg += "${head}. ${warn} " else msg += "${warn} "
                         }
                     }	
                 }
