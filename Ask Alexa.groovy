@@ -2259,11 +2259,11 @@ def getMoonInfo(){
         if (m < 8) {
             dir = "Waxing" 
             nxt = "First Quarter"
-            days = 7 - m
+            days = 8 - m
         } else if (m < 15) {
         	dir = "Waxing"
             nxt = "Full"
-            days = 14 - m
+            days = 15 - m
         } else if (m < 23) {
         	dir = "Waning"
             nxt = "Third Quarter"
@@ -2271,7 +2271,7 @@ def getMoonInfo(){
         } else {
             dir = "Waning"
             nxt = "New"
-            days = 28 - m
+            days = 29 - m
         }
         
         if (days.toInteger() != 1) sss = "s"
@@ -2306,6 +2306,7 @@ def weatherAlerts(){
 	def msg = "", brief = false
     if (location.timeZone || zipCode) {
         def alerts = getWeatherFeature("alerts", zipCode).alerts
+//        def alerts = getWeatherFeature("alerts", "29560").alerts
 // 		def alerts = getWeatherFeature("alerts", "pws:KKSMCPHE12").alerts
         if ( alerts.size() > 0 ) {
             if ( alerts.size() == 1 ) msg += "There is one active advisory for this area. "
@@ -2352,59 +2353,69 @@ def weatherAlerts(){
                             def warnings = []
                             def i = 0
                             while ( warn != "" ) {
-                            	def ddate = warn.replaceFirst(/(?i).+ (\d{3,4} (am|pm) .{3} .{3} .{3} .? .{4}).*/, /$1/)
-                            	if ( ddate ) {
+                            	def ddate = warn.replaceFirst(/(?i)(.+?)(\d{3,4} (am|pm) .{3} .{3} .{3} \d? \d{4})(.*)/, /$2/)
+                            	if ( ddate && (ddate.size() != warn.size())) {
                             		def d = warn.indexOf(ddate)
                                 	warnings[i] = warn.take(d-1)
                                 	warn = warn.drop(d+ddate.size())
                                     i=i+1
                                 } else {
                                 	warnings[i] = warn
-                                    warn = ""
+                                   	warn = ""
                                 }
+                             //   msg += "ddate: ${ddate}, i: ${i}. "
                             }
-                            
+                            // msg += "There are ${i+1} warnings in this alert. "
+
                             def headline = ""
                             warnings.each { warning ->
-                            	def b = warning.indexOf(', ')+2
-                            	def e = warning.indexOf(',', b)
+                            	def b = 1 // warning.indexOf(', ')+2
+                                def e = warning.indexOf(',', b+1)
                                 if (e>b) {
-                                	def head = warning.substring(b, e)				// extract the advisory headline
-                                	warning = warning.drop( e+2 )					// drop the headline  
-                                
+                                	def head = warning.substring(b, e)				// extract the advisory headline 
+                                    if (head.startsWith( ', ')) head = head - ', '
+                                	// msg += "headline ${headline}, head ${head}"
                                		if (i!=0) {			// if more than one message, check for repeats.
                                			if (headline == "") {
                                 			headline = head							// first occurance
                                 			warn = head + ". "
+                                            warning = warning.drop( e+2 )					// drop the headline 
                                 		} else if (head != headline) {				// different headline
                                 			warn = head + ". "
+                                            warning = warning.drop( e+2 )					// drop the headline 
                                 		} else { 
                                         	warn = ""
                                         }									// headlines are the same, drop this warning[]
 									} else {
-                            			warn = head + ". "							// only 1 warning in this Advisory
+                            			warn = head + ". "					// only 1 warning in this Advisory
+                                        warning = warning.drop( e+2 )					// drop the headline 
                             		}
-                                } else {	// no headline in this message
-                                	warn = ""	// Drop whatever junk is in it
+                                } else {									// no headline in this message
+                                	warn = " "								// No header, let fall through
                                 }
-
+                                
                                 if (warn != "") {							// good warning - let's clean it up
                                 	def m
-                                	warning = warning.replaceAll(/ ((?i)\d{1,2})(\d{2}) (am|pm) /, / $1:$2 $3 / )	// fix time for Alexa to read 
-                           			def latlon = warning.replaceFirst(/(?i)(Lat, Lon)/, /$1/)
-									if (latlon) {
+                                	warning = warning.replaceAll(/(?i) (\d{1,2})(\d{2}) (am|pm) /, / $1:$2 $3 / )	// fix time for Alexa to read 
+									warn = warn.replaceAll(/(?i) (\d{1,2})(\d{2}) (am|pm) /, / $1:$2 $3 / )
+                                    
+									def latlon = warning.replaceFirst("(?i).+(Lat, Lon).+", /$1/)
+									if (latlon && (latlon.size() != warning.size())) {
                                     	m = warning.indexOf( latlon )
 										if (m>0) warning = warning.take(m-1)
                                     }
-                                    def table = warning.replaceFirst(/(?i)(Fld observed forecast)/, /$1/)
-                           			if (table) {
+                                    // msg += "latlon = ${latlon}. "
+                                    def table = warning.replaceFirst("(?i).*(Fld\\s+observed\\s+forecast).*", /$1/)
+                           			if (table && (table.size() != warning.size())) {
                                     	m = warning.indexOf( table )
                                         if (m>0) warning = warning.take(m-1)
                                     }
+                                    // msg += "table = ${table}. "
                                     warning = warning.replaceFirst("(.+\\.)(.*)", /$1/)		// strip off Alert author, if present
-                           			warning = warning.replaceAll(/\/[sS]/, /\'s/).trim()		// fix escaped plurals, and trim excess whitespace
-                          			if (!warning.endsWith(".")) warning += "."				// close off this warning with a period                            			
-                           			msg += warn + warning
+                           			warning = warning.replaceAll(/\/[sS]/, /\'s/).trim()	// fix escaped plurals, and trim excess whitespace
+								//	warning = warning.replaceAll(" (\\d+)\\.0 ", / $1 /)
+									if (!warning.endsWith(".")) warning += "."				// close off this warning with a period                            			
+                           			msg += warn + warning + " "
                            			warn = ""
 
                                 }
@@ -2429,7 +2440,7 @@ def translateTxt(){
 	wordCvt <<[txt:" WNW ",cvt: " west-north west "] << [txt:" WSW ",cvt: " west-south west "] << [txt:" ENE ",cvt: " east-north east "] << [txt:" ESE ",cvt: " east-south east "]
 	wordCvt <<[txt: /([0-9]+)C/, cvt: '$1 degrees'] << [txt: /([0-9]+)F/, cvt: '$1 degrees'] << [txt: "mph", cvt: "mi/h"]<<[txt: "kph", cvt: "km/h"]
 	wordCvt <<[txt: "MPH", cvt: "mi/h"]//<< [txt: "PDT", cvt: "pacific daylight time"]<< [txt: "MDT", cvt: "mountain daylight time"]<< [txt: "EDT", cvt: "eastern daylight time"]
-//	wordCvt <<[txt: "CDT", cvt: "central daylight time"]<<[txt: /\\.0 /, cvt: / /]
+	wordCvt /* << [txt: "CDT", cvt: "central daylight time"] */ <<[txt: "\\.0 ", cvt: " "]
 }
 //Send Messages-----------------------------------------------------------
 def sendMSG(num, msg, push, recipients){
