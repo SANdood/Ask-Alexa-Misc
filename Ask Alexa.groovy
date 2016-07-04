@@ -2214,20 +2214,20 @@ private getWeatherForecast(){
     if (location.timeZone || zipCode) {
 		def sb = new StringBuilder()
         def isMetric = location.temperatureScale == "C"
-		def weather = getWeatherFeature("forecast", zipCode)
+		def weather = getWeatherFeature('forecast', zipCode)
         if (voiceWeatherToday  || voiceWeatherTonight || voiceWeatherTomorrow ){
             if (voiceWeatherToday){
-                sb << "Today's forecast calls for "
+                sb << 'Today\'s forecast calls for '
                 def formattedWeather = isMetric ? weather.forecast.txt_forecast.forecastday[0].fcttext_metric : weather.forecast.txt_forecast.forecastday[0].fcttext 
                 sb << formattedWeather[0].toLowerCase() + formattedWeather.substring(1) + " "
             }
             if (voiceWeatherTonight){
-                sb << "For tonight's forecast you can expect "
+                sb << 'For tonight\'s forecast you can expect '
                 def formattedWeather = isMetric ? weather.forecast.txt_forecast.forecastday[1].fcttext_metric : weather.forecast.txt_forecast.forecastday[1].fcttext
                 sb << formattedWeather[0].toLowerCase() + formattedWeather.substring(1) + " "
             }
             if (voiceWeatherTomorrow){
-                sb << "Tomorrow your forecast is "
+                sb << 'Tomorrow your forecast is '
 				def formattedWeather = isMetric ? weather.forecast.txt_forecast.forecastday[2].fcttext_metric : weather.forecast.txt_forecast.forecastday[2].fcttext
                 sb << formattedWeather[0].toLowerCase() + formattedWeather.substring(1) + " "
             }
@@ -2237,47 +2237,47 @@ private getWeatherForecast(){
         if (voiceSunrise || voiceSunset){
             def todayDate = new Date()
             def s = getSunriseAndSunset(zipcode: zipCode, date: todayDate)	
-            def riseTime = parseDate(s.sunrise.time, "h:mm a")
-            def setTime = parseDate(s.sunset.time, "h:mm a")
+            def riseTime = parseDate(s.sunrise.time, 'h:mm a')
+            def setTime = parseDate(s.sunset.time, 'h:mm a')
             def currTime = now()
-            def verb1 = currTime >= s.sunrise.time ? "rose" : "will rise"
-            def verb2 = currTime >= s.sunset.time ? "set" : "will set"
+            def verb1 = currTime >= s.sunrise.time ? 'rose' : 'will rise'
+            def verb2 = currTime >= s.sunset.time ? 'set' : 'will set'
             if (voiceSunrise && voiceSunset) msg += "The sun ${verb1} this morning at ${riseTime} and ${verb2} at ${setTime}. "
             else if (voiceSunrise && !voiceSunset) msg += "The sun ${verb1} this morning at ${riseTime}. "
             else if (!voiceSunrise && voiceSunset) msg += "The sun ${verb2} tonight at ${setTime}. "
         }
     }
-    else  msg = "Please set the location of your hub with the SmartThings mobile app, or enter a zip code to receive weather forecasts. "
+    else  msg = 'Please set the location of your hub with the SmartThings mobile app, or enter a zip code to receive weather forecasts. '
     return msg
 }
 def getMoonInfo(){
 	def msg = "", dir, nxt, days, sss =""
     if (location.timeZone || zipCode) {
-        def moon = getWeatherFeature( "astronomy", zipCode ).moon_phase
+        def moon = getWeatherFeature( 'astronomy', zipCode ).moon_phase
         def m = moon.ageOfMoon.toInteger()
 		msg += "The moon is ${m} days old at ${moon.percentIlluminated}%, "
         if (m < 8) {
-            dir = "Waxing" 
-            nxt = "First Quarter"
+            dir = 'Waxing' 
+            nxt = 'First Quarter'
             days = 8 - m
         } else if (m < 15) {
-        	dir = "Waxing"
-            nxt = "Full"
+        	dir = 'Waxing'
+            nxt = 'Full'
             days = 15 - m
         } else if (m < 23) {
-        	dir = "Waning"
-            nxt = "Third Quarter"
+        	dir = 'Waning'
+            nxt = 'Third Quarter'
 			days = 22 - m
         } else {
-            dir = "Waning"
-            nxt = "New"
+            dir = 'Waning'
+            nxt = 'New'
             days = 29 - m
         }
         
-        if (days.toInteger() != 1) sss = "s"
+        if (days.toInteger() != 1) sss = 's'
         switch (moon.percentIlluminated.toInteger()) {
             case 0:
-                msg += "New Moon, and the next First Quarter moon is in 7 days. "
+                msg += 'New Moon, and the next First Quarter moon is in 7 days. '
                 break
             case 1..49:
                 msg += "${dir} Crescent, and the next ${nxt} moon is "
@@ -2292,28 +2292,28 @@ def getMoonInfo(){
                 if (days == 0) msg += "later today. " else msg += "in ${days} day${sss}. "
                 break
             case 100:
-                msg += "Full Moon, and the next Third Quarter moon is in 7 days. "
+                msg += 'Full Moon, and the next Third Quarter moon is in 7 days. '
                 break
             default:
-                msg += ". "
+                msg += '. '
         }
     }
-    else  msg = "Please set the location of your hub with the SmartThings mobile app, or enter a zip code to receive lunar information. "
+    else  msg = 'Please set the location of your hub with the SmartThings mobile app, or enter a zip code to receive lunar information. '
     log.debug msg
     return msg
 }
 def weatherAlerts(){
 	def msg = "", brief = false
     if (location.timeZone || zipCode) {
-        def alerts = getWeatherFeature("alerts", zipCode).alerts
-//        def alerts = getWeatherFeature("alerts", "29560").alerts
-// 		def alerts = getWeatherFeature("alerts", "pws:KKSMCPHE12").alerts
+        def alerts = getWeatherFeature('alerts', zipCode).alerts
+//        def alerts = getWeatherFeature('alerts', '99755').alerts
+// 		def alerts = getWeatherFeature('alerts', 'pws:KTXSOUTH37').alerts
         if ( alerts.size() > 0 ) {
-            if ( alerts.size() == 1 ) msg += "There is 1 active advisory for this area. "
+            if ( alerts.size() == 1 ) msg += 'There is 1 active advisory for this area. '
             else msg += "There are ${alerts.size()} active advisories for this area. "
             def warn
             if (voiceWeatherWarnFull) {
-                if (alerts[0].date_epoch == "NA") {
+                if (alerts[0].date_epoch == 'NA') {
                     def explained = []
                     alerts.each {
                         msg += "${it.wtype_meteoalarm_name} Advisory"
@@ -2330,26 +2330,26 @@ def weatherAlerts(){
                                 }
                                 warn = "${it.description} This advisory was issued on ${it.date} and it expires on ${it.expires}. "
                         }
-                        warn = warn.replaceAll("kn\\, ", " knots, ").replaceAll("Bft ", " Beaufort level ").replaceAll("\\s+", " ").trim()
-                        if (!warn.endsWith(".")) warn += "."
+                        warn = warn.replaceAll("kn\\, ", ' knots, ').replaceAll('Bft ', ' Beaufort level ').replaceAll("\\s+", ' ').trim()
+                        if (!warn.endsWith(".")) warn += '.'
                         msg += "${warn} " 
                     }
                 } else {
                     alerts.each { alert ->
                     	def desc
                     	if (alert.description.startsWith("A")) {		// Areal Flood Watch
-                        	desc = "An "
+                        	desc = 'An '
                     	} else {
-                    		desc = "A " 
+                    		desc = 'A ' 
                     	}
                     	desc += "${alert.description} is in effect from ${alert.date} until ${alert.expires}. "
                         msg += desc.replaceAll(/ 0(\d,) /, / $1 /)			// Fix "July 02, 2016" --> "July 2, 2016"
 
                         if ( !brief ) {
-                          	warn = alert.message.replaceAll("\\.\\.\\.", ", ").replaceAll("\\* ", " ") 				// convert "..." and "* " to a single space (" ")
-                            warn = warn.replaceAll( "\\s+", " ")												// remove extra whitespace
+                          	warn = alert.message.replaceAll("\\.\\.\\.", ', ').replaceAll("\\* ", ' ') 				// convert "..." and "* " to a single space (" ")
+                            warn = warn.replaceAll( "\\s+", ' ')												// remove extra whitespace
 
-							// See if we need to split up the message (multiple messages are separated by a date stamp)
+							// See if we need to split up the message (multiple warnings are separated by a date stamp)
                             def warnings = []
                             def i = 0
                             while ( warn != "" ) {
@@ -2375,20 +2375,20 @@ def weatherAlerts(){
                                		if (i!=0) {										// if more than one warning, check for repeats.
                                			if (headline == "") {
                                 			headline = head							// first occurance
-                                			warn = head + ". "
+                                			warn = head + '. '
                                             warning = warning.drop( e+2 )			// drop the headline 
                                 		} else if (head != headline) {				// different headline
-                                			warn = head + ". "
+                                			warn = head + '. '
                                             warning = warning.drop( e+2 )			// drop the headline 
                                 		} else { 
                                         	warn = ""
                                         }											// headlines are the same, drop this warning[]
 									} else {
-                            			warn = head + ". "							// only 1 warning in this Advisory
+                            			warn = head + '. '							// only 1 warning in this Advisory
                                         warning = warning.drop( e+2 )				// drop the headline 
                             		}
                                 } else {											// no headline in this message
-                                	warn = " "										// No header, let fall through
+                                	warn = ' '										// No header, let fall through
                                 }
                                 
                                 if (warn != "") {									// good warning - let's clean it up
@@ -2410,8 +2410,8 @@ def weatherAlerts(){
 
                                     warning = warning.replaceFirst("(.+\\.)(.*)", /$1/)		// strip off Alert author, if present
                            			warning = warning.replaceAll(/\/[sS]/, /\'s/).trim()	// fix escaped plurals, and trim excess whitespace
-									if (!warning.endsWith(".")) warning += "."				// close off this warning with a period                            			
-                           			msg += warn + warning + " "
+									if (!warning.endsWith('.')) warning += '.'				// close off this warning with a period                            			
+                           			msg += warn + warning + ' '
                            			warn = ""
                                 }
                             }
@@ -2419,23 +2419,22 @@ def weatherAlerts(){
                     }	
                 }
             }
-            else msg += ". To hear more about this advisory, configure your SmartApp to give you the full message. "
+            else msg += '. To hear more about this advisory, configure your SmartApp to give you the full message. '
         }
     }
-    else msg = "Please set the location of your hub with the SmartThings mobile app, or enter a zip code to receive advisory information. "
+    else msg = 'Please set the location of your hub with the SmartThings mobile app, or enter a zip code to receive advisory information. '
     translateTxt().each {msg = msg.replaceAll(it.txt,it.cvt)}
     return msg
 }
 //Translate Maxtrix-----------------------------------------------------------
 def translateTxt(){
 	def wordCvt=[]
-    wordCvt <<[txt:" N ",cvt: " north "] << [txt:" S ",cvt: " south "] << [txt:" E ",cvt: " east "] << [txt:" W ",cvt: " west "]
-    wordCvt <<[txt:" NW ",cvt: " north west "] << [txt:" SW ",cvt: " south west "] << [txt:" NE ",cvt: " north east "] << [txt:" SE ",cvt: " south east "]
-	wordCvt <<[txt:" NNW ",cvt: " north-north west "] << [txt:" SSW ",cvt: " south-south west "] << [txt:" NNE ",cvt: " north-north east "] << [txt:" SSE ",cvt: " south-south east "]
-	wordCvt <<[txt:" WNW ",cvt: " west-north west "] << [txt:" WSW ",cvt: " west-south west "] << [txt:" ENE ",cvt: " east-north east "] << [txt:" ESE ",cvt: " east-south east "]
-	wordCvt <<[txt: /([0-9]+)C/, cvt: '$1 degrees'] << [txt: /([0-9]+)F/, cvt: '$1 degrees'] << [txt: "(?i)mph", cvt: "mi/h"]<<[txt: "(?i)kph", cvt: "km/h"]
-	// wordCvt <<[txt: "MPH", cvt: "mi/h"]//<< [txt: "PDT", cvt: "pacific daylight time"]<< [txt: "MDT", cvt: "mountain daylight time"]<< [txt: "EDT", cvt: "eastern daylight time"]
-	wordCvt /* << [txt: "CDT", cvt: "central daylight time"] */ <<[txt: "\\.0 ", cvt: " "]
+    wordCvt <<[txt:' N ',cvt: ' north '] << [txt:' S ',cvt: ' south '] << [txt:' E ',cvt: ' east '] << [txt:' W ',cvt: ' west ']
+    wordCvt <<[txt:' NW ',cvt: ' north west '] << [txt:' SW ',cvt: ' south west '] << [txt:' NE ',cvt: ' north east '] << [txt:' SE ',cvt: ' south east ']
+	wordCvt <<[txt:' NNW ',cvt: ' north-north west '] << [txt:' SSW ',cvt: ' south-south west '] << [txt:' NNE ',cvt: ' north-north east '] << [txt:' SSE ',cvt: ' south-south east ']
+	wordCvt <<[txt:' WNW ',cvt: ' west-north west '] << [txt:' WSW ',cvt: ' west-south west '] << [txt:' ENE ',cvt: ' east-north east '] << [txt:' ESE ',cvt: ' east-south east ']
+	wordCvt <<[txt: /(\d+)(C|F)/, cvt: '$1 degrees'] << [txt: "(?i)mph", cvt: 'mi/h']<<[txt: "(?i)kph", cvt: 'km/h']
+	wordCvt <<[txt: /\\.0 /, cvt: ' '] << [txt: /(\\.\d)0 /, cvt: /$1 /]
 }
 //Send Messages-----------------------------------------------------------
 def sendMSG(num, msg, push, recipients){
