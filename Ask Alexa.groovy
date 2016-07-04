@@ -2094,126 +2094,126 @@ private getWeatherReport(){
 	def msg = "", temp
     if (location.timeZone || zipCode) {
     	def sb = new StringBuilder()
-        def isMetric = location.temperatureScale == "C"
-		def cond = getWeatherFeature("conditions", zipCode).current_observation
+        def isMetric = location.temperatureScale == 'C'
+		def cond = getWeatherFeature('conditions', zipCode).current_observation
         if (voiceWeatherTemp){
-        	sb << "The current temperature is "
+        	sb << 'The current temperature is '
             if (isMetric) { 
             	temp = cond.temp_c 
                 String t = temp as String 
-                if (t.endsWith(".0")) t = t - ".0" 
+                if (t.endsWith('.0')) t = t - '.0' 
                 temp=t.toFloat()
             } 
             else temp = Math.round(cond.temp_f) 
-            sb << temp + " degrees with " + cond.weather
+            sb << temp + ' degrees with ' + cond.weather
             switch (cond.weather) {
-            case "Overcast":
-            case "Clear":
-            case "Partly Cloudy":
-            case "Mostly Cloudy": 
-                sb << " skies. "
+            case 'Overcast':
+            case 'Clear':
+            case 'Partly Cloudy':
+            case 'Mostly Cloudy': 
+                sb << ' skies. '
                 break
-            case "Unknown":
-            case "Thunderstorm":
-            case "Light Thunderstorm":
-            case "Heavy Thunderstorm":
-            case "Sandstorm":
-            case "Light Sandstorm":
-            case "Heavy Sandstorm":
-                sb << " conditions. "
+            case 'Unknown':
+            case 'Thunderstorm':
+            case 'Light Thunderstorm':
+            case 'Heavy Thunderstorm':
+            case 'Sandstorm':
+            case 'Light Sandstorm':
+            case 'Heavy Sandstorm':
+                sb << ' conditions. '
                 break
             default:
-                sb << ". "
+                sb << '. '
     		}
         }
         if (voiceWeatherHumid){
-            sb << "The relative humidity is " + cond.relative_humidity + " and the winds are "
-            if ((cond.wind_kph.toFloat() + cond.wind_gust_kph.toFloat()) == 0.0) sb << "calm. "
+            sb << 'The relative humidity is ' + cond.relative_humidity + ' and the winds are '
+            if ((cond.wind_kph.toFloat() + cond.wind_gust_kph.toFloat()) == 0.0) sb << 'calm. '
             else if (isMetric) {
-                sb << "from the " + cond.wind_dir + " at " + cond.wind_kph + " kph"
-                if (cond.wind_gust_kph.toFloat() > 0) sb << " gusting to " + cond.wind_gust_kph + " kph. "
-                else sb << ". "
+                sb << 'from the ' + cond.wind_dir + ' at ' + cond.wind_kph + ' kph'
+                if (cond.wind_gust_kph.toFloat() > 0) sb << ' gusting to ' + cond.wind_gust_kph + ' kph. '
+                else sb << '. '
             }
-			else sb << cond.wind_string + ". "
-         	sb << "The barometric pressure is "
+			else sb << cond.wind_string + '. '
+            sb << 'The barometric pressure is '
             switch (cond.pressure_trend) {
-    		case "+":
-        		if (isMetric) sb << cond.pressure_mb + " millibars" else sb << cond.pressure_in + " inches"
-                sb << " and rising. "
+    		case '+': 
+            	if (isMetric) sb << cond.pressure_mb + ' millibars' else sb << cond.pressure_in + ' inches'
+                sb << ' and rising. '
             	break
-        	case "-":
-        		if (isMetric) sb << cond.pressure_mb + " millibars" else sb << cond.pressure_in + " inches"
+        	case '-':
+            	if (isMetric) sb << cond.pressure_mb + ' millibars' else sb << cond.pressure_in + ' inches'
                 sb << " and falling. "
         		break
         	default:
         		sb << "steady at "
-                if (isMetric) sb << cond.pressure_mb + " millibars. " else sb << cond.pressure_in + " inches. "
+                if (isMetric) sb << cond.pressure_mb + ' millibars. ' else sb << cond.pressure_in + ' inches. '
      		}   
        	}
         if (voiceWeatherDew){
-            sb << "The dewpoint is "
+            sb << 'The dewpoint is '
 			if (isMetric) { 
             	temp = cond.dewpoint_c 
                 String t = temp as String 
-                if (t.endsWith(".0")) t = t - ".0" 
+                if (t.endsWith('.0')) t = t - '.0' 
                 temp=t.toFloat() 
             } else temp = Math.round(cond.dewpoint_f)            
-            sb << temp +" degrees, and the 'feels like' temperature is "
+            sb << temp +' degrees, and the \'feels like\' temperature is '
             if (isMetric) { 
             	temp = cond.feelslike_c.toFloat() 
                 String t = temp as String 
                 if (t.endsWith(".0")) t = t - ".0" 
                 temp=t.toFloat() 
 			} else temp = Math.round(cond.feelslike_f.toFloat()) as Integer 
-            sb << temp + " degrees. "
+            sb << temp + ' degrees. '
         }
         if (voiceWeatherSolar){
-            if (cond.solarradiation != "--" && cond.UV != "") sb << "The solar radiation level is " + cond.solarradiation + ", and the UV index is " + cond.UV + ". "
-            if (cond.solarradiation != "--" && cond.UV == "") sb << "The solar radiation level is " + cond.solarradiation + ". "
-            if (cond.solarradiation == "--" && cond.UV != "")  sb << "The UV index is " + cond.UV + ". "
+            if (cond.solarradiation != '--' && cond.UV != '') sb << 'The solar radiation level is ' + cond.solarradiation + ', and the UV index is ' + cond.UV + '. '
+            if (cond.solarradiation != '--' && cond.UV == '') sb << 'The solar radiation level is ' + cond.solarradiation + '. '
+            if (cond.solarradiation == '--' && cond.UV != '')  sb << 'The UV index is ' + cond.UV + '. '
 		}
         if (voiceWeatherVisiblity) {
-        	sb << "Visibility is "
+        	sb << 'Visibility is '
             def visibility = isMetric ? cond.visibility_km.toFloat() : cond.visibility_mi.toFloat()
             String t = visibility as String
-            if (visibility >1  && t.endsWith(".0")) t = t - ".0"
+            if (visibility >1  && t.endsWith('.0')) t = t - '.0'
             else if (visibility < 1 ) t=t.toFloat()
-            if (visibility == 1) if (isMetric) sb << t + " kilometer. " else sb << t + " mile. " 
-            else if (isMetric) sb << t + " kilometers. " else sb << t + " miles. " 
+            if (visibility == 1) if (isMetric) sb << t + ' kilometer. ' else sb << t + ' mile. ' 
+            else if (isMetric) sb << t + ' kilometers. ' else sb << t + ' miles. '
      	}
         if (voiceWeatherPrecip) {    
-            sb << "There has been "
+            sb << 'There has been '
             def precip = isMetric ? cond.precip_today_metric : cond.precip_today_in
-            def p = "no"
+            def p = 'no'
             if (precip) {
     			if (precip.toFloat() > 0.0) {
     				p = precip as String
-     	   			if (p.endsWith(".0")) p = p - ".0"
+     	   			if (p.endsWith('.0')) p = p - '.0'
    				}
     		} 
             else precip = 0.0
 			sb << p
-            if ( p != "no" ) {
+            if ( p != 'no' ) {
     			if (precip.toFloat() != 1.0) {
-    				if (isMetric) sb << " millimeters of" else sb << " inches of"
+    				if (isMetric) sb << ' millimeters of' else sb << ' inches of'
     			}
                 else {
-                	if (isMetric) sb << " millimeter of" else sb << " inch of"
+                	if (isMetric) sb << ' millimeter of' else sb << ' inch of'
     			}
     		}
-			sb << " precipitation today. "
+			sb << ' precipitation today. '
 		}
 	   	msg = sb.toString()
         translateTxt().each {msg = msg.replaceAll(it.txt,it.cvt)}
     }
-    else  msg = "Please set the location of your hub with the SmartThings mobile app, or enter a zip code to receive weather reports. "
+    else  msg = 'Please set the location of your hub with the SmartThings mobile app, or enter a zip code to receive weather reports. '
     return msg
 }
 private getWeatherForecast(){
     def msg = ""
     if (location.timeZone || zipCode) {
 		def sb = new StringBuilder()
-        def isMetric = location.temperatureScale == "C"
+        def isMetric = location.temperatureScale == 'C'
 		def weather = getWeatherFeature('forecast', zipCode)
         if (voiceWeatherToday  || voiceWeatherTonight || voiceWeatherTomorrow ){
             if (voiceWeatherToday){
