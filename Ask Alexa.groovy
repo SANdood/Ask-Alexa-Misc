@@ -2376,7 +2376,7 @@ def weatherAlerts(){
                             def warnings = [] 																		// See if we need to split up the message (multiple warnings are separated by a date stamp)
                             def i = 0
                             while ( warn != "" ) {
-                            	def ddate = warn.replaceFirst(/(?i)(.+?)(\d{3,4} (am|pm) .{3} .{3} .{3} \d? \d{4})(.*)/, /$2/)
+                            	def ddate = warn.replaceFirst(/(?i)(.+?)(\d{3,4} (am|pm) .{3} .{3} .{3} \d+ \d{4})(.*)/, /$2/)
                             	if ( ddate && (ddate.size() != warn.size())) {
                             		def d = warn.indexOf(ddate)
                                 	warnings[i] = warn.take(d-1)
