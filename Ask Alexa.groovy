@@ -2127,7 +2127,12 @@ private getWeatherReport(){
     if (location.timeZone || zipCode) {
     	def sb = new StringBuilder()
         def isMetric = location.temperatureScale == 'C'
-		def cond = getWeatherFeature('conditions', zipCode).current_observation
+        Map conditions = getWeatherFeature('conditions', zipCode)
+        if ((conditions == null) || conditions.response.containsKey('error')) {
+        	msg = "Your hub location or supplied Zip Code is unrecognized by the SmartThings Weather Feature. "
+    		return msg
+        }
+		def cond = conditions.current_observation
         if (voiceWeatherTemp){
         	sb << 'The current temperature is '
             if (isMetric) { 
@@ -2246,7 +2251,11 @@ private getWeatherForecast(){
     if (location.timeZone || zipCode) {
 		def sb = new StringBuilder()
         def isMetric = location.temperatureScale == 'C'
-		def weather = getWeatherFeature('forecast', zipCode)
+		Map weather = getWeatherFeature('forecast', zipCode)
+		if ((weather == null) || weather.response.containsKey('error')) {
+			msg = "Your hub location or supplied Zip Code is unrecognized by the SmartThings Weather Feature. "
+			return msg
+		}
         if (voiceWeatherToday  || voiceWeatherTonight || voiceWeatherTomorrow ){
             if (voiceWeatherToday){
                 sb << 'Today\'s forecast calls for '
@@ -2285,7 +2294,12 @@ private getWeatherForecast(){
 def getMoonInfo(){
 	def msg = "", dir, nxt, days, sss =""
     if (location.timeZone || zipCode) {
-        def moon = getWeatherFeature( 'astronomy', zipCode ).moon_phase
+        Map astronomy = getWeatherFeature( 'astronomy', zipCode ).moon_phase
+        if ((astronomy == null) || astronomy.response.containsKey('error')) {
+			msg = "Your hub location or supplied Zip Code is unrecognized by the SmartThings Weather Feature. "
+			return msg
+		}
+		def moon = astronomy.moon_phase
         def m = moon.ageOfMoon.toInteger()
 		msg += "The moon is ${m} days old at ${moon.percentIlluminated}%, "
         if (m < 8) {
@@ -2336,7 +2350,12 @@ def weatherAlerts(){
 	String msg = ""
     def brief = false
     if (location.timeZone || zipCode) {
-        def alerts = getWeatherFeature('alerts', zipCode).alerts
+        Map advisories = getWeatherFeature('alerts', zipCode)
+        if ((advisories == null) || advisories.response.containsKey('error')) {
+			msg = "Your hub location or supplied Zip Code is unrecognized by the SmartThings Weather Feature. "
+			return msg
+		}
+		def alerts = advisories.alerts
         if ( alerts.size() > 0 ) {
             if ( alerts.size() == 1 ) msg += 'There is one active advisory for this area. '
             else msg += "There are ${alerts.size()} active advisories for this area. "
@@ -2444,6 +2463,61 @@ def weatherAlerts(){
     translateTxt().each {msg = msg.replaceAll(it.txt,it.cvt)}
     return msg
 }
+
+private tideInfo() {
+	String msg = ""
+    if (location.timeZone || zipCode) {
+        Map tideMap = getWeatherFeature('tide', zipCode)
+        if ((tideMap == null) || tideMap.response.containsKey('error')) {
+			msg = "Your hub location or supplied Zip Code is unrecognized by the SmartThings Weather Feature. "
+			return msg
+		}
+		if (tideMap.tide.tideinfo.tideSite == "") {
+			msg = "No tide station found near to this location. "
+			return msg
+		}
+		def tides = tideMap.tide
+		
+		msg = "Here are the upcoming tidal events for ${tide.tideInfo.tideSite}: "
+		
+		def hi=0
+		def lo=0
+		def up=0
+		def dn=0
+		tides.tideSummary.each { tide ->
+			switch tide.data.type {
+				case "High Tide":
+					if (hi==0) {
+						msg += " The next high tide is at ${tide.date.pretty}. "
+						hi = 1
+					}
+					break
+				case "Low Tide":
+					if (lo==0) {
+						msg += " The next low tide will be at ${tide.date.pretty}. "
+						lo = 1
+					}
+					break
+				case "Moonrise":
+					if (up==0) {
+						msg += " The moon will rise at ${tide.date.pretty}. "
+						up = 1
+					}
+					break
+				case "Moonset":
+					if (dn==0) {
+						msg += " The moon will set at ${tide.date.pretty}. "
+						dn = 1
+					}
+					break
+				default:
+			}
+		}
+    }
+	else msg = 'Please set the location of your hub with the SmartThings mobile app, or enter a zip code to receive advisory information. '
+    return msg		
+}
+
 //Translate Maxtrix-----------------------------------------------------------
 def translateTxt(){
 	def wordCvt=[]
