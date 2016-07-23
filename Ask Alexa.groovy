@@ -2258,17 +2258,17 @@ private getWeatherForecast(){
 		}
         if (voiceWeatherToday  || voiceWeatherTonight || voiceWeatherTomorrow ){
             if (voiceWeatherToday){
-                sb << 'Today\'s forecast calls for '
+                sb << '${weather.forecast.txt_forecast.forecastday[0].title}\'s forecast calls for '
                 def formattedWeather = isMetric ? weather.forecast.txt_forecast.forecastday[0].fcttext_metric : weather.forecast.txt_forecast.forecastday[0].fcttext 
                 sb << formattedWeather[0].toLowerCase() + formattedWeather.substring(1) + " "
             }
             if (voiceWeatherTonight){
-                sb << 'For tonight\'s forecast you can expect '
+                sb << 'For ${weather.forecast.txt_forecast.forecastday[1].title}\'s forecast you can expect '
                 def formattedWeather = isMetric ? weather.forecast.txt_forecast.forecastday[1].fcttext_metric : weather.forecast.txt_forecast.forecastday[1].fcttext
                 sb << formattedWeather[0].toLowerCase() + formattedWeather.substring(1) + " "
             }
             if (voiceWeatherTomorrow){
-                sb << 'Tomorrow your forecast is '
+                sb << 'Your forecast for ${weather.forecast.txt_forecast.forecasatday[2].title} is '
 				def formattedWeather = isMetric ? weather.forecast.txt_forecast.forecastday[2].fcttext_metric : weather.forecast.txt_forecast.forecastday[2].fcttext
                 sb << formattedWeather[0].toLowerCase() + formattedWeather.substring(1) + " "
             }
@@ -2473,10 +2473,26 @@ private tideInfo() {
 			return msg
 		}
 		if (tideMap.tide.tideinfo.tideSite == "") {
-			msg = "No tide station found near to this location. "
+			msg = "No tide station found near this location (${zipCode}). "
 			return msg
 		}
 		def tides = tideMap.tide
+		Map astronomy = getWeatherFeature('astronomy', zipCode)
+		if ((astronomy == null) || astronomy.response.containsKey('error')) {
+			msg = "An error occured getting the tide information. "
+			return msg
+		}
+		def cur_hour = astronomy.moon_phase.current_time.hour			// get time at requested location
+		def cur_min = astronomy.moon_phase.current_time.minute			// may not be same as the SmartThings hub location
+		/*
+		get location's day/date from somewhere - maybe from forecast
+		
+		tideSummary: [
+{
+date: {
+pretty: "8:14 AM EDT on July 23, 2016",
+*/
+
 		
 		msg = "Here are the upcoming tidal events for ${tide.tideInfo.tideSite}: "
 		
