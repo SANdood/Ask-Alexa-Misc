@@ -2476,31 +2476,54 @@ private tideInfo() {
 			msg = "No tide station found near this location (${zipCode}). "
 			return msg
 		}
-		def tides = tideMap.tide
+		Map tides = tideMap.tide
+		
 		Map astronomy = getWeatherFeature('astronomy', zipCode)
 		if ((astronomy == null) || astronomy.response.containsKey('error')) {
 			msg = "An error occured getting the tide information. "
 			return msg
 		}
-		def cur_hour = astronomy.moon_phase.current_time.hour			// get time at requested location
-		def cur_min = astronomy.moon_phase.current_time.minute			// may not be same as the SmartThings hub location
-		/*
-		get location's day/date from somewhere - maybe from forecast
-		
-		tideSummary: [
-{
-date: {
-pretty: "8:14 AM EDT on July 23, 2016",
-*/
-
+		Integer cur_hour = astronomy.moon_phase.current_time.hour.toInteger()			// get time at requested location
+		Integer cur_minute = astronomy.moon_phase.current_time.minute.toInteger()		// may not be same as the SmartThings hub location
+		Integer cur_minsToday = (cur_hour * 60) + cur_minutes
 		
 		msg = "Here are the upcoming tidal events for ${tide.tideInfo.tideSite}: "
 		
+		def count = 0
 		def hi=0
 		def lo=0
 		def up=0
 		def dn=0
 		tides.tideSummary.each { tide ->
+
+			Integer tide_hour = tides.tideSummary[0].date.hour.toInteger()
+			Integer tide_min = tides.tideSummary[0].date.min.toInteger()
+			Integer tide_mins = (tide.hour * 60) + tide_min
+		
+			String dayTxt = 'this '
+			Integer minsUntil = 0
+			if (tide_mins < cur_minsToday) {	// first tide event is tomorrow
+				dayTxt = 'tomorrow '
+				tide_mins = tide_mins + 3600
+			}
+			minsUntil = tide_mins - cur_minsToday
+			Integer whenHour = minsUntil % 60
+			Integer whenMin = minsUntil - (whenHour * 60)
+			
+			String whenTxt = 'morning '
+			if (tide_hour > 12) {
+				if ( tide_hour < 18) {
+					whenTxt = 'afternoon '
+				} else if (tide_hour < 20) {
+					whenTxt = 'evening '
+				} else {
+					if (dayTxt == 'this ') {
+						whenTxt = 'tonight ' 
+						dayTxt = ''
+					} else whenTxt = 'night '
+				}
+			}
+
 			switch tide.data.type {
 				case "High Tide":
 					if (hi==0) {
