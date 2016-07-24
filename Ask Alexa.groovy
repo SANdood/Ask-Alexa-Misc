@@ -2472,10 +2472,10 @@ private tideInfo() {
 			msg = "Your hub location or supplied Zip Code is unrecognized by the SmartThings Weather Feature. "
 			return msg
 		}
-		if (tideMap.tide.tideinfo.tideSite == "") {
+		if (tideMap.tide.tideInfo.tideSite == "") {
 			msg = "No tide station found near this location (${zipCode}). "
 			return msg
-		}
+		} else String tideSite = tideMap.tide.tideInfo.tideSite
 		Map tides = tideMap.tide
 		
 		Map astronomy = getWeatherFeature('astronomy', zipCode)
@@ -2485,7 +2485,7 @@ private tideInfo() {
 		}
 		Integer cur_hour = astronomy.moon_phase.current_time.hour.toInteger()			// get time at requested location
 		Integer cur_minute = astronomy.moon_phase.current_time.minute.toInteger()		// may not be same as the SmartThings hub location
-		Integer cur_minsToday = (cur_hour * 60) + cur_minutes
+		Integer cur_mins = (cur_hour * 60) + cur_minute
 		
 		msg = "Here are the upcoming tidal events for ${tide.tideInfo.tideSite}: "
 		
@@ -2496,60 +2496,68 @@ private tideInfo() {
 		def dn=0
 		tides.tideSummary.each { tide ->
 
-			Integer tide_hour = tides.tideSummary[0].date.hour.toInteger()
-			Integer tide_min = tides.tideSummary[0].date.min.toInteger()
-			Integer tide_mins = (tide.hour * 60) + tide_min
+			if ((tide.data.type == 'High Tide') || (tide.data.type == 'Low Tide')) {
+				count = count + 1
+				if (count > 4)	break	//2 each High and Low Tides
+				
+				Integer tide_hour = tide.date.hour.toInteger()
+				Integer tide_min = tide.date.min.toInteger()
+				Integer tide_mins = (tide.hour * 60) + tide_min
 		
-			String dayTxt = 'this '
-			Integer minsUntil = 0
-			if (tide_mins < cur_minsToday) {	// first tide event is tomorrow
-				dayTxt = 'tomorrow '
-				tide_mins = tide_mins + 3600
-			}
-			minsUntil = tide_mins - cur_minsToday
-			Integer whenHour = minsUntil % 60
-			Integer whenMin = minsUntil - (whenHour * 60)
-			
-			String whenTxt = 'morning '
-			if (tide_hour > 12) {
-				if ( tide_hour < 18) {
-					whenTxt = 'afternoon '
-				} else if (tide_hour < 20) {
-					whenTxt = 'evening '
-				} else {
-					if (dayTxt == 'this ') {
-						whenTxt = 'tonight ' 
-						dayTxt = ''
-					} else whenTxt = 'night '
+				String dayTxt = 'this '
+				Integer minsUntil = 0
+				if (tide_mins < cur_mins) {	// first tide event is tomorrow
+					dayTxt = 'tomorrow '
+					tide_mins = tide_mins + 3600
 				}
-			}
-
-			switch tide.data.type {
-				case "High Tide":
-					if (hi==0) {
-						msg += " The next high tide is at ${tide.date.pretty}. "
-						hi = 1
+				minsUntil = tide_mins - cur_minsToday
+				Integer whenHour = minsUntil % 60
+				Integer whenMin = minsUntil - (whenHour * 60)
+			
+				String whenTxt = 'morning '
+				if (tide_hour > 12) {
+					if ( tide_hour < 18) {
+						whenTxt = 'afternoon '
+					} else if (tide_hour < 20) {
+						whenTxt = 'evening '
+					} else {
+						if (dayTxt == 'this ') {
+							whenTxt = 'tonight ' 
+							dayTxt = ''
+						} else whenTxt = 'night '
 					}
-					break
-				case "Low Tide":
-					if (lo==0) {
-						msg += " The next low tide will be at ${tide.date.pretty}. "
-						lo = 1
-					}
-					break
-				case "Moonrise":
-					if (up==0) {
-						msg += " The moon will rise at ${tide.date.pretty}. "
-						up = 1
-					}
-					break
-				case "Moonset":
-					if (dn==0) {
-						msg += " The moon will set at ${tide.date.pretty}. "
-						dn = 1
-					}
-					break
-				default:
+				}
+				if (count == 1) {
+					msg = 'The next '
+				}
+				switch tide.data.type {
+					case "High Tide":
+						if (hi==0) {
+							msg += 'high tide '
+							hi = hi + 1
+						}
+						break
+					case "Low Tide":
+						if (lo==0) {
+							msg += 'low tide '
+							lo = lo + 1
+						}
+						break
+					default:
+				}
+				if (count == 1) {
+					msg += "at ${tideSite} "
+				}
+				msg += 'will be in '
+				if (whenHour > 0) {
+					msg += "${whenHour} hour"
+					if (whenHour > 1) msg +='s'
+					if (whenMin > 0) msg += ' and'
+				}
+				if (whenMin > 0) {
+					msg += " ${winMin} minute"
+				}
+				msg += "at ${tide_hour}:${tide_min} $dayText $whenText. "
 			}
 		}
     }
