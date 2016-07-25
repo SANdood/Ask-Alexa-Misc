@@ -2122,7 +2122,456 @@ private parseDate(time, type){
     def formattedDate = new Date(longDate).format("yyyy-MM-dd'T'HH:mm:ss.SSSZ", location.timeZone)
     new Date().parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", formattedDate).format("${type}", timeZone(formattedDate))
 }
--
+private getWeatherReport(){
+	def msg = "", temp
+    if (location.timeZone || zipCode) {
+    	def sb = new StringBuilder()
+        def isMetric = location.temperatureScale == 'C'
+        Map conditions = getWeatherFeature('conditions', zipCode)
+        if ((conditions == null) || conditions.response.containsKey('error')) {
+        	msg = "Your hub location or supplied Zip Code is unrecognized by Weather Underground. "
+    		return msg
+        }
+		def cond = conditions.current_observation
+        if (voiceWeatherTemp){
+        	sb << 'The current temperature is '
+            if (isMetric) { 
+            	temp = cond.temp_c 
+                String t = temp as String 
+                if (t.endsWith('.0')) t = t - '.0' 
+                temp=t.toFloat()
+            } 
+            else temp = Math.round(cond.temp_f) 
+            sb << temp + ' degrees with ' + cond.weather
+            switch (cond.weather) {
+            case 'Overcast':
+            case 'Clear':
+            case 'Partly Cloudy':
+            case 'Mostly Cloudy': 
+                sb << ' skies. '
+                break
+            case 'Unknown':
+            case 'Thunderstorm':
+            case 'Light Thunderstorm':
+            case 'Heavy Thunderstorm':
+            case 'Sandstorm':
+            case 'Light Sandstorm':
+            case 'Heavy Sandstorm':
+                sb << ' conditions. '
+                break
+            default:
+                sb << '. '
+    		}
+        }
+        if (voiceWeatherHumid){
+            sb << 'The relative humidity is ' + cond.relative_humidity + ' and the winds are '
+            if ((cond.wind_kph.toFloat() + cond.wind_gust_kph.toFloat()) == 0.0) sb << 'calm. '
+            else if (isMetric) {
+                sb << 'from the ' + cond.wind_dir + ' at ' + cond.wind_kph + ' kph'
+                if (cond.wind_gust_kph.toFloat() > 0) sb << ' gusting to ' + cond.wind_gust_kph + ' kph. '
+                else sb << '. '
+            }
+			else sb << cond.wind_string + '. '
+            sb << 'The barometric pressure is '
+            switch (cond.pressure_trend) {
+    		case '+': 
+            	if (isMetric) sb << cond.pressure_mb + ' millibars' else sb << cond.pressure_in + ' inches'
+                sb << ' and rising. '
+            	break
+        	case '-':
+            	if (isMetric) sb << cond.pressure_mb + ' millibars' else sb << cond.pressure_in + ' inches'
+                sb << " and falling. "
+        		break
+        	default:
+        		sb << "steady at "
+                if (isMetric) sb << cond.pressure_mb + ' millibars. ' else sb << cond.pressure_in + ' inches. '
+     		}   
+       	}
+        if (voiceWeatherDew){
+            sb << 'The dewpoint is '
+			if (isMetric) { 
+            	temp = cond.dewpoint_c 
+                String t = temp as String 
+                if (t.endsWith('.0')) t = t - '.0' 
+                temp=t.toFloat() 
+            } else temp = Math.round(cond.dewpoint_f)            
+            sb << temp +' degrees, and the \'feels like\' temperature is '
+            if (isMetric) { 
+            	temp = cond.feelslike_c.toFloat() 
+                String t = temp as String 
+                if (t.endsWith(".0")) t = t - ".0" 
+                temp=t.toFloat() 
+			} else temp = Math.round(cond.feelslike_f.toFloat()) as Integer 
+            sb << temp + ' degrees. '
+        }
+        if (voiceWeatherSolar){
+            if (cond.solarradiation != '--' && cond.UV != '') sb << 'The solar radiation level is ' + cond.solarradiation + ', and the UV index is ' + cond.UV + '. '
+            if (cond.solarradiation != '--' && cond.UV == '') sb << 'The solar radiation level is ' + cond.solarradiation + '. '
+            if (cond.solarradiation == '--' && cond.UV != '')  sb << 'The UV index is ' + cond.UV + '. '
+		}
+        if (voiceWeatherVisiblity) {
+        	sb << 'Visibility is '
+            def visibility = isMetric ? cond.visibility_km.toFloat() : cond.visibility_mi.toFloat()
+            String t = visibility as String
+            if (visibility >1  && t.endsWith('.0')) t = t - '.0'
+            else if (visibility < 1 ) t=t.toFloat()
+            if (visibility == 1) if (isMetric) sb << t + ' kilometer. ' else sb << t + ' mile. ' 
+            else if (isMetric) sb << t + ' kilometers. ' else sb << t + ' miles. '
+     	}
+        if (voiceWeatherPrecip) {    
+            sb << 'There has been '
+            def precip = isMetric ? cond.precip_today_metric : cond.precip_today_in
+            def p = 'no'
+            if (precip) {
+    			if (precip.toFloat() > 0.0) {
+    				p = precip as String
+     	   			if (p.endsWith('.0')) p = p - '.0'
+   				}
+    		} 
+            else precip = 0.0
+			sb << p
+            if ( p != 'no' ) {
+    			if (precip.toFloat() != 1.0) {
+    				if (isMetric) sb << ' millimeters of' else sb << ' inches of'
+    			}
+                else {
+                	if (isMetric) sb << ' millimeter of' else sb << ' inch of'
+    			}
+    		}
+			sb << ' precipitation today. '
+		}
+	   	msg = sb.toString()
+        translateTxt().each {msg = msg.replaceAll(it.txt,it.cvt)}
+    }
+    else msg = "Please set the location of your hub with the SmartThings mobile app, or enter a zip code to receive weather reports. "
+    return msg
+}
+private getWeatherForecast(){
+    def msg = ""
+    if (location.timeZone || zipCode) {
+		def sb = new StringBuilder()
+        def isMetric = location.temperatureScale == 'C'
+		Map weather = getWeatherFeature('forecast', zipCode)
+		if ((weather == null) || weather.response.containsKey('error')) {
+			msg = "Your hub location or supplied Zip Code is unrecognized by Weather Underground. "
+			return msg
+		}
+
+        if (voiceWeatherToday  || voiceWeatherTonight || voiceWeatherTomorrow ){
+            if (voiceWeatherToday){
+                sb << "${weather.forecast.txt_forecast.forecastday[0].title}'s forecast calls for "
+                def formattedWeather = isMetric ? weather.forecast.txt_forecast.forecastday[0].fcttext_metric : weather.forecast.txt_forecast.forecastday[0].fcttext 
+                sb << formattedWeather[0].toLowerCase() + formattedWeather.substring(1) + " "
+            }
+            if (voiceWeatherTonight){
+                sb << "For ${weather.forecast.txt_forecast.forecastday[1].title}'s forecast you can expect "
+                def formattedWeather = isMetric ? weather.forecast.txt_forecast.forecastday[1].fcttext_metric : weather.forecast.txt_forecast.forecastday[1].fcttext
+                sb << formattedWeather[0].toLowerCase() + formattedWeather.substring(1) + " "
+            }
+            if (voiceWeatherTomorrow){
+                sb << "Your forecast for ${weather.forecast.txt_forecast.forecastday[2].title} is "
+				def formattedWeather = isMetric ? weather.forecast.txt_forecast.forecastday[2].fcttext_metric : weather.forecast.txt_forecast.forecastday[2].fcttext
+                sb << formattedWeather[0].toLowerCase() + formattedWeather.substring(1) + " "
+            }
+            msg = sb.toString()
+            translateTxt().each {msg = msg.replaceAll(it.txt,it.cvt)}
+        }
+        if (voiceSunrise || voiceSunset){
+            def todayDate = new Date()
+            def s = getSunriseAndSunset(zipcode: zipCode, date: todayDate)	
+            def riseTime = parseDate(s.sunrise.time, 'h:mm a')
+            def setTime = parseDate(s.sunset.time, 'h:mm a')
+            def currTime = now()
+            def verb1 = currTime >= s.sunrise.time ? 'rose' : 'will rise'
+            def verb2 = currTime >= s.sunset.time ? 'set' : 'will set'
+            if (voiceSunrise && voiceSunset) msg += "The sun ${verb1} this morning at ${riseTime} and ${verb2} at ${setTime}. "
+            else if (voiceSunrise && !voiceSunset) msg += "The sun ${verb1} this morning at ${riseTime}. "
+            else if (!voiceSunrise && voiceSunset) msg += "The sun ${verb2} tonight at ${setTime}. "
+        }
+    }
+    else  msg = "Please set the location of your hub with the SmartThings mobile app, or enter a zip code to receive weather forecasts. "
+    return msg
+}
+def getMoonInfo(){
+	def msg = "", dir, nxt, days, sss =""
+    if (location.timeZone || zipCode) {
+        Map astronomy = getWeatherFeature( 'astronomy', zipCode )
+        if ((astronomy == null) || astronomy.response.containsKey('error')) {
+			msg = "Your hub location or supplied Zip Code is unrecognized by Weather Underground. "
+			return msg
+		}
+		def moon = astronomy.moon_phase
+        def m = moon.ageOfMoon.toInteger()
+		msg += "The moon is ${m} days old at ${moon.percentIlluminated}%, "
+        if (m < 8) {
+            dir = 'Waxing' 
+            nxt = 'First Quarter'
+            days = 8 - m
+        } else if (m < 15) {
+        	dir = 'Waxing'
+            nxt = 'Full'
+            days = 15 - m
+        } else if (m < 23) {
+        	dir = 'Waning'
+            nxt = 'Third Quarter'
+			days = 22 - m
+        } else {
+            dir = 'Waning'
+            nxt = 'New'
+            days = 29 - m
+        }
+        if (days.toInteger() != 1) sss = 's'
+        switch (moon.percentIlluminated.toInteger()) {
+            case 0:
+                msg += 'New Moon, and the First Quarter moon is in 7 days. '
+                break
+            case 1..49:
+                msg += "${dir} Crescent, and the ${nxt} moon is "
+                if (days == 0) msg+= "later today. " else msg+= " in ${days} day${sss}. "               
+                break
+            case 50:
+                if (dir == "Waxing") msg += "First Quarter, " else msg += "Third Quarter, "
+                msg += "and the ${nxt} Moon is in ${days} day${sss}. "
+                break
+            case 51..99:
+                msg += "${dir} Gibbous, and the ${nxt} moon is "
+                if (days == 0) msg += "later today. " else msg += "in ${days} day${sss}. "
+                break
+            case 100:
+                msg += 'Full Moon, and the Third Quarter moon is in 7 days. '
+                break
+            default:
+                msg += '. '
+        }
+    }
+    else  msg = 'Please set the location of your hub with the SmartThings mobile app, or enter a zip code to receive lunar information. '
+    return msg
+}
+def weatherAlerts(){
+	String msg = ""
+    def brief = false
+   
+    if (location.timeZone || zipCode) {
+        Map advisories = getWeatherFeature('alerts', zipCode)
+        if ((advisories == null) || advisories.response.containsKey('error')) {
+			msg = "Your hub location or supplied Zip Code is unrecognized by Weather Underground. "
+			return msg
+		}
+		def alerts = advisories.alerts
+		if ((alerts != null) && (alerts.size() > 0)) {
+            if ( alerts.size() == 1 ) msg += 'There is one active advisory for this area. '
+            else msg += "There are ${alerts.size()} active advisories for this area. "
+            def warn
+            if (voiceWeatherWarnFull) {
+                if (alerts[0].date_epoch == 'NA') {
+                    def explained = []
+                    alerts.each {
+                        msg += "${it.wtype_meteoalarm_name} Advisory"
+                        if (it.level_meteoalarm != "") msg += ", level ${it.level_meteoalarm}"
+                        if (it.level_meteoalarm_name != "") msg += ", color ${it.level_meteoalarm_name}"
+                        msg += ". "
+                        if (brief) warn = " ${it.description} Advisory issued ${it.date}, expires ${it.expires}. "
+                        else {
+                            if (it.level_meteoalarm == "") {
+                                if (it.level_meteoalarm_description != "") msg += "${it.level_meteoalarm_description} "
+                            } else if (!explained.contains(it.level_meteoalarm)) {
+                                if (it.level_meteoalarm_description != "") msg += "${it.level_meteoalarm_description} "                       	
+                                    explained.add(it.level_meteoalarm)
+                                }
+                                warn = "${it.description} This advisory was issued on ${it.date} and it expires on ${it.expires}. "
+                        }
+                        warn = warn.replaceAll("kn\\, ", ' knots, ').replaceAll('Bft ', ' Beaufort level ').replaceAll("\\s+", ' ').trim()
+                        if (!warn.endsWith(".")) warn += '.'
+                        msg += "${warn} " 
+                    }
+                } else {
+                    alerts.each { alert ->
+                    	def desc
+                    	if (alert.description.startsWith("A")) desc = 'An '
+                    	else desc = 'A ' 
+                    	desc += "${alert.description} is in effect from ${alert.date} until ${alert.expires}. "
+                        msg += desc.replaceAll(/ 0(\d,) /, / $1 /)													// Fix "July 02, 2016" --> "July 2, 2016"
+                        if ( !brief ) {
+                          	warn = alert.message.replaceAll("\\.\\.\\.", ', ').replaceAll("\\* ", ' ') 				// convert "..." and "* " to a single space (" ")
+                            warn = warn.replaceAll( "\\s+", ' ')													// remove extra whitespace
+                            def warnings = [] 																		// See if we need to split up the message (multiple warnings are separated by a date stamp)
+                            def i = 0
+                            while ( warn != "" ) {
+                            	def ddate = warn.replaceFirst(/(?i)(.+?)(\d{3,4} (am|pm) .{3} .{3} .{3} \d+ \d{4})(.*)/, /$2/)
+                            	if ( ddate && (ddate.size() != warn.size())) {
+                            		def d = warn.indexOf(ddate)
+                                	warnings[i] = warn.take(d-1)
+                                	warn = warn.drop(d+ddate.size())
+                                    i=i+1
+                                } else {
+                                	warnings[i] = warn
+                                   	warn = ""
+                                }
+                            }
+                            def headline = ""
+                            warnings.each { warning ->
+                            	def b = 1
+                                def e = warning.indexOf(',', b+1)
+                                if (e>b) {
+                                	def head = warning.substring(b, e)												// extract the advisory headline 
+                                    if (head.startsWith( ', ')) head = head - ', '
+                               		if (i!=0) {																		// if more than one warning, check for repeats.
+                               			if (headline == "") {
+                                			headline = head															// first occurance
+                                			warn = head + '. '
+                                            warning = warning.drop( e+2 )											// drop the headline 
+                                		} else if (head != headline) {												// different headline
+                                			warn = head + '. '
+                                            warning = warning.drop( e+2 )											// drop the headline 
+                                		} else { 
+                                        	warn = ""
+                                        }																			// headlines are the same, drop this warning[]
+									} else {
+                            			warn = head + '. '															// only 1 warning in this Advisory
+                                        warning = warning.drop( e+2 )												// drop the headline 
+                            		}
+                                } else {																			// no headline in this message
+                                	warn = ' '																		// No header, let fall through
+                                }
+                                if (warn != "") {																	// good warning - let's clean it up
+                                	def m
+                                	warning = warning.replaceAll(/(?i) (\d{1,2})(\d{2}) (am|pm) /, / $1:$2 $3 / )	// fix time for Alexa to read 
+									warn = warn.replaceAll(/(?i) (\d{1,2})(\d{2}) (am|pm) /, / $1:$2 $3 / )
+                                    def table = warning.replaceFirst("(?i).*(Fld\\s+observed\\s+forecast).*", /$1/)
+                           			if (table && (table.size() != warning.size())) {
+                                    	m = warning.indexOf( table )
+                                        if (m>0) warning = warning.take(m-1)
+                                    }
+									def latlon = warning.replaceFirst("(?i).+(Lat, Lon).+", /$1/)
+									if (latlon && (latlon.size() != warning.size())) {
+                                    	m = warning.indexOf( latlon )
+										if (m>0) warning = warning.take(m-1)
+                                    }
+                                    warning = warning.replaceFirst("(.+\\.)(.*)", /$1/)								// strip off Alert author, if present
+                           			warning = warning.replaceAll(/\/[sS]/, /\'s/).trim()							// fix escaped plurals, and trim excess whitespace
+									if (!warning.endsWith('.')) warning += '.'										// close off this warning with a period                            			
+                           			msg += warn + warning + ' '
+                           			warn = ""
+                                }
+                            }
+                        }
+                    }	
+                }
+            } else msg += 'Configure your SmartApp to give you full advisory information. '
+        } // else msg += 'No advisories. '
+    } else msg = 'Please set the location of your hub with the SmartThings mobile app, or enter a zip code to receive advisory information. '
+    
+    translateTxt().each {msg = msg.replaceAll(it.txt,it.cvt)}
+  
+    msg += tideInfo()
+    return msg
+}
+
+private tideInfo() {
+	String msg = ""
+
+    if (location.timeZone || zipCode) {
+        Map tideMap = getWeatherFeature('tide', zipCode)        
+        if ((tideMap == null) || tideMap.response.containsKey('error')) {
+			msg = "Your hub location or supplied Zip Code is unrecognized by Weather Underground. "
+			return msg
+		}
+        
+		def tideSite = tideMap.tide.tideInfo.tideSite.join(",").replaceAll(',', '' )
+		if (tideSite == "") {
+			msg = "No tide station found near this location"
+			if (zipCode) msg += " (${zipCode}). " else msg+= '. '
+			return msg
+		}
+        
+		Map astronomy = getWeatherFeature('astronomy', zipCode)
+		if ((astronomy == null) || astronomy.response.containsKey('error')) {
+			msg = "An error occured getting the tide information. "
+			return msg
+		}
+		Integer cur_hour = astronomy.moon_phase.current_time.hour.toInteger()			// get time at requested location
+		Integer cur_minute = astronomy.moon_phase.current_time.minute.toInteger()		// may not be the same as the SmartThings hub location
+		Integer cur_mins = (cur_hour * 60) + cur_minute
+//		msg += "The time now is ${cur_hour}:${cur_minute}. "
+
+		String timeZoneTxt = tideMap.tide.tideSummary[0].date.pretty.replaceAll(/\d+:\d+ .{2} (.{3}) .*/, /$1/)
+        
+		Integer count = 0
+        Integer index = 0
+   	    while (count < 4) {	
+			def tide = tideMap.tide.tideSummary[index]
+            index = index + 1
+			if ((tide.data.type == 'High Tide') || (tide.data.type == 'Low Tide')) {
+				count = count + 1
+
+				Integer tide_hour = tide.date.hour.toInteger()
+				Integer tide_min = tide.date.min.toInteger()
+				Integer tide_mins = (tide_hour * 60) + tide_min	
+                
+				String dayTxt = 'this'
+				if (tide_mins < cur_mins) {	// tide event is tomorrow
+					dayTxt = 'tomorrow'
+					tide_mins = tide_mins + 3600
+				}
+
+				Integer minsUntil = tide_mins - cur_mins
+				Integer whenHour = minsUntil / 60
+				Integer whenMin = minsUntil % 60
+				
+                String ampm = 'am'
+				String whenTxt = 'morning'
+				if (tide_hour > 11) {
+                	ampm = 'pm'
+					if ( tide_hour < 18) {
+						whenTxt = 'afternoon'
+                       
+					} else if (tide_hour < 20) {
+						whenTxt = 'evening'
+					} else {
+						if (dayTxt == 'this') {
+							whenTxt = 'tonight' 
+							dayTxt = ''
+						} else whenTxt = 'night'
+					}
+				}
+                
+				if (count <= 2) {
+					msg += 'The next '
+				} else if (count == 3) {
+					msg += 'Then '
+				} else msg += 'followed by '
+				
+				msg += tide.data.type + ' '
+
+				if (tide_hour > 12) tide_hour = tide_hour - 12
+                String tide_minTxt
+                if (tide_min < 10) tide_minTxt = '0'+tide_min else tide_minTxt = tide_min
+                
+				if (count == 1) {
+					msg += "at ${tideSite} will be in "
+					if (whenHour > 0) {
+						msg += "${whenHour} hour"
+						if (whenHour > 1) msg +='s'
+						if (whenMin > 0) msg += ' and'
+					}
+					if (whenMin > 0) {
+						msg += " ${whenMin} minute"
+						if (whenMin > 1) msg +='s'
+					}
+					msg += " at ${tide_hour}:${tide_minTxt} ${ampm} ${dayTxt} ${whenTxt} (all times ${timeZoneTxt}). "
+				} else if (count == 2) {
+					msg += "will be ${dayTxt} ${whenTxt} at ${tide_hour}:${tide_minTxt} ${ampm}. "
+				} else if (count == 3) {
+					msg += "again ${dayTxt} ${whenTxt} at ${tide_hour}:${tide_minTxt} ${ampm}, "
+				} else msg += "at ${tide_hour}:${tide_minTxt} ${ampm} ${dayTxt} ${whenTxt}."
+			}
+		}
+    }
+	else msg = 'Please set the location of your hub with the SmartThings mobile app, or enter a zip code to receive tide information. '
+    
+	msg = msg.replaceAll( "\\s+", ' ' ) 	// remove extra whitespace
+    return msg		
+}
 
 //Translate Maxtrix-----------------------------------------------------------
 def translateTxt(){
