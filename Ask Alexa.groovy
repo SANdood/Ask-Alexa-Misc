@@ -2511,7 +2511,7 @@ private tideInfo() {
 				String dayTxt = 'this'
 				if (tide_mins < cur_mins) {	// tide event is tomorrow
 					dayTxt = 'tomorrow'
-					tide_mins = tide_mins + 3600
+					tide_mins = tide_mins + 1440
 				}
 
 				Integer minsUntil = tide_mins - cur_mins
@@ -2563,7 +2563,7 @@ private tideInfo() {
 					msg += "will be ${dayTxt} ${whenTxt} at ${tide_hour}:${tide_minTxt} ${ampm}. "
 				} else if (count == 3) {
 					msg += "again ${dayTxt} ${whenTxt} at ${tide_hour}:${tide_minTxt} ${ampm}, "
-				} else msg += "at ${tide_hour}:${tide_minTxt} ${ampm} ${dayTxt} ${whenTxt}."
+				} else msg += "at ${tide_hour}:${tide_minTxt} ${ampm} ${dayTxt} ${whenTxt}. "
 			}
 		}
     }
