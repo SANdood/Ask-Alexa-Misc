@@ -2344,9 +2344,10 @@ def getMoonInfo(){
         if (set_hour > 12) set_hour = set_hour - 12
         String rise_minTxt = rise_min < 10 ? '0'+rise_min : rise_min
         String set_minTxt = set_min < 10 ? '0'+set_min : set_min
-        if (voiceSunrise && voiceSunset) msg += "The moon ${verb1} at ${rise_hour}:${rise_minTxt} ${rise_ampm} and ${verb2} at ${set_hour}:${set_minTxt} ${set_ampm}. "
-        else if (voiceSunrise && !voiceSunset) msg += "The moon ${verb1} at ${rise_hour}:${rise_minTxt} ${rise_ampm}. "
-        else if (!voiceSunrise && voiceSunset) msg += "The moon ${verb2} at ${set_hour}:${set_minTxt} ${set_ampm}. "
+        String riseTxt = "${verb1} at ${rise_hour}:${rise_minTxt} ${rise_ampm}"
+        String setTxt =  "${verb2} at ${set_hour}:${set_minTxt} ${set_ampm}"
+        msg += 'The moon '
+        msg += rise_mins < set_mins ? "${riseTxt} and ${setTxt}. " : "${setTxt} and ${riseTxt}. " 
         
         def moon = astronomy.moon_phase
         def m = moon.ageOfMoon.toInteger()
