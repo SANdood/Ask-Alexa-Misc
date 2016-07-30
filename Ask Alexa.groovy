@@ -2287,16 +2287,29 @@ private getWeatherForecast(){
             translateTxt().each {msg = msg.replaceAll(it.txt,it.cvt)}
         }
         if (voiceSunrise || voiceSunset){
-            def todayDate = new Date()
-            def s = getSunriseAndSunset(zipcode: zipCode, date: todayDate)	
-            def riseTime = parseDate(s.sunrise.time, 'h:mm a')
-            def setTime = parseDate(s.sunset.time, 'h:mm a')
-            def currTime = now()
-            def verb1 = currTime >= s.sunrise.time ? 'rose' : 'will rise'
-            def verb2 = currTime >= s.sunset.time ? 'set' : 'will set'
-            if (voiceSunrise && voiceSunset) msg += "The sun ${verb1} this morning at ${riseTime} and ${verb2} at ${setTime}. "
-            else if (voiceSunrise && !voiceSunset) msg += "The sun ${verb1} this morning at ${riseTime}. "
-            else if (!voiceSunrise && voiceSunset) msg += "The sun ${verb2} tonight at ${setTime}. "
+        	Map astronomy = getWeatherFeature('astronomy', zipCode)
+			if ((astronomy == null) || astronomy.response.containsKey('error')) {
+				msg = "An error occured getting the sunrise information. "
+				return msg
+			}
+			Integer cur_hour = astronomy.moon_phase.current_time.hour.toInteger()				// get time at requested location
+			Integer cur_min = astronomy.moon_phase.current_time.minute.toInteger()			// may not be the same as the SmartThings hub location
+			Integer cur_mins = (cur_hour * 60) + cur_min
+            Integer rise_hour = astronomy.moon_phase.sunrise.hour.toInteger()
+            Integer rise_min = astronomy.moon_phase.sunrise.minute.toInteger()
+            Integer rise_mins = (rise_hour * 60) + rise_min
+            Integer set_hour = astronomy.moon_phase.sunset.hour.toInteger()
+            Integer set_min = astronomy.moon_phase.sunset.minute.toInteger()
+            Integer set_mins = (set_hour * 60) + set_min
+            def verb1 = cur_mins >= rise_mins ? 'rose' : 'will rise'
+            def verb2 = cur_mins >= set_mins ? 'set' : 'will set'
+            if (rise_hour == 0) rise_hour = 12            
+            if (set_hour > 12) set_hour = set_hour - 12
+            String rise_minTxt = rise_min < 10 ? '0'+rise_min : rise_min
+            String set_minTxt = set_min < 10 ? '0'+set_min : set_min
+            if (voiceSunrise && voiceSunset) msg += "The sun ${verb1} this morning at ${rise_hour}:${rise_minTxt} am and ${verb2} tonight at ${set_hour}:${set_minTxt} pm. "
+            else if (voiceSunrise && !voiceSunset) msg += "The sun ${verb1} this morning at ${rise_hour}:${rise_minTxt} am. "
+            else if (!voiceSunrise && voiceSunset) msg += "The sun ${verb2} tonight at ${set_hour}:${set_minTxt} pm. "
         }
     }
     else  msg = "Please set the location of your hub with the SmartThings mobile app, or enter a zip code to receive weather forecasts. "
@@ -2309,7 +2322,32 @@ def getMoonInfo(){
 		if ((astronomy == null) || astronomy.response.containsKey('error')) {
 			msg = "Your hub location or supplied Zip Code is unrecognized by Weather Underground. "
 			return msg
-		}    
+		}
+		Integer cur_hour = astronomy.moon_phase.current_time.hour.toInteger()				// get time at requested location
+		Integer cur_min = astronomy.moon_phase.current_time.minute.toInteger()			// may not be the same as the SmartThings hub location
+		Integer cur_mins = (cur_hour * 60) + cur_min
+        Integer rise_hour = astronomy.moon_phase.moonrise.hour.toInteger()
+        Integer rise_min = astronomy.moon_phase.moonrise.minute.toInteger()
+        Integer rise_mins = (rise_hour * 60) + rise_min
+        Integer set_hour = astronomy.moon_phase.moonset.hour.toInteger()
+        Integer set_min = astronomy.moon_phase.moonset.minute.toInteger()
+        Integer set_mins = (set_hour * 60) + set_min
+        String verb1 = cur_mins >= rise_mins ? 'rose' : 'will rise'
+        String verb2 = cur_mins >= set_mins ? 'set' : 'will set'
+        String rise_ampm = 'am'
+        String set_ampm = 'am'
+        if (rise_hour >= 12) rise_ampm = 'pm'
+        if (set_hour >= 12) set_ampm = 'pm'
+        if (rise_hour == 0) rise_hour = 12
+        if (set_hour == 0) set_hour = 12
+        if (rise_hour > 12) rise_hour = rise_hour - 12
+        if (set_hour > 12) set_hour = set_hour - 12
+        String rise_minTxt = rise_min < 10 ? '0'+rise_min : rise_min
+        String set_minTxt = set_min < 10 ? '0'+set_min : set_min
+        if (voiceSunrise && voiceSunset) msg += "The moon ${verb1} at ${rise_hour}:${rise_minTxt} ${rise_ampm} and ${verb2} at ${set_hour}:${set_minTxt} ${set_ampm}. "
+        else if (voiceSunrise && !voiceSunset) msg += "The moon ${verb1} at ${rise_hour}:${rise_minTxt} ${rise_ampm}. "
+        else if (!voiceSunrise && voiceSunset) msg += "The moon ${verb2} at ${set_hour}:${set_minTxt} ${set_ampm}. "
+        
         def moon = astronomy.moon_phase
         def m = moon.ageOfMoon.toInteger()
 		msg += "The moon is ${m} days old at ${moon.percentIlluminated}%, "
