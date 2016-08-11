@@ -2340,15 +2340,16 @@ private getWeatherForecast(){
 def getMoonInfo(){
 	def msg = "", dir, nxt, days, sss =""
    	Map astronomy = getWeatherFeature( 'astronomy', zipCode )
-    if ((astronomy == null) || astronomy.response.containsKey('error')) return "There was an error in the lunar data received Weather Underground. "
+    if ((astronomy == null) || astronomy.response.containsKey('error')) return "There was an error in the lunar data received from Weather Underground. "
 	Integer cur_hour = astronomy.moon_phase.current_time.hour.toInteger()				// get time at requested location
 	Integer cur_min = astronomy.moon_phase.current_time.minute.toInteger()				// may not be the same as the SmartThings hub location
 	Integer cur_mins = (cur_hour * 60) + cur_min
-    Integer rise_hour = astronomy.moon_phase.moonrise.hour.toInteger()
-    Integer rise_min = astronomy.moon_phase.moonrise.minute.toInteger()
+	
+    Integer rise_hour = astronomy.moon_phase.moonrise.hour.isInteger()? astronomy.moon_phase.moonrise.hour.toInteger() : -1
+    Integer rise_min = astronomy.moon_phase.moonrise.minute.isInteger()? astronomy.moon_phase.moonrise.minute.toInteger() : -1
     Integer rise_mins = (rise_hour * 60) + rise_min
-    Integer set_hour = astronomy.moon_phase.moonset.hour.toInteger()
-    Integer set_min = astronomy.moon_phase.moonset.minute.toInteger()
+    Integer set_hour = astronomy.moon_phase.moonset.hour.isInteger()? astronomy.moon_phase.moonset.hour.toInteger() : -1
+    Integer set_min = astronomy.moon_phase.moonset.minute.isInteger()? astronomy.moon_phase.moonset.minute.toInteger() : -1
     Integer set_mins = (set_hour * 60) + set_min
     String verb1 = cur_mins >= rise_mins ? 'rose' : 'will rise'
     String verb2 = cur_mins >= set_mins ? 'set' : 'will set'
@@ -2363,7 +2364,11 @@ def getMoonInfo(){
     String riseTxt = "${verb1} at ${rise_hour}:${rise_minTxt} ${rise_ampm}"
     String setTxt =  "${verb2} at ${set_hour}:${set_minTxt} ${set_ampm}"
     msg += 'The moon '
-    msg += rise_mins < set_mins ? "${riseTxt} and ${setTxt}. " : "${setTxt} and ${riseTxt}. "    
+    if (set_mins < 0) {
+    	msg += "${riseTxt}. "  
+    } else if (rise_mins < 0) {
+    	msg += "${setTxt}. "
+    } else msg += rise_mins < set_mins ? "${riseTxt} and ${setTxt}. " : "${setTxt} and ${riseTxt}. "    
     def moon = astronomy.moon_phase
     def m = moon.ageOfMoon.toInteger()
     sss = m == 1 ? "" : "s"
